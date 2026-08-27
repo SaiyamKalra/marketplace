@@ -1,7 +1,6 @@
 // This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
+// learn more about Prisma in the docs:
+// https://pris.ly/d/prisma-schema
 
 generator client {
   provider = "prisma-client"
@@ -10,4 +9,252 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+
+model User {
+  userId    String  @id @default(uuid())
+  firstName String
+  lastName  String
+  email     String  @unique
+  password  String
+  status    Account
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  youtuber           Youtuber?
+  youtuberTeamMember YoutuberTeamMember?
+  freelancer         Freelancer?
+  client             Client?
+
+  applications Application[]
+  payments     Payment[]
+}
+
+
+model Youtuber {
+  channelId String @id @default(uuid())
+
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  youtubeChannel  String
+  channelUrl      String @unique
+  description     String
+  subscriberCount Int
+  profilePic      String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  youtuberTeamMember YoutuberTeamMember[]
+
+  applications Application[]
+}
+
+model YoutuberTeamMember {
+  memberId String @id @default(uuid())
+
+  channelId String
+  youtuber  Youtuber @relation(fields: [channelId], references: [channelId], onDelete: Cascade)
+
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  role          String
+  certification String
+  profilePic    String
+
+  startDate DateTime
+  endDate   DateTime
+
+  price    Decimal
+  contract String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  skills SkillMember[]
+
+  @@index([channelId, userId])
+}
+
+model Skills {
+  skillId     String @id @default(uuid())
+  name        String @unique
+  description String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  member SkillMember[]
+  freelancer SkillFreelancer[]
+}
+
+
+model SkillMember {
+  skillMemberId String @id @default(uuid())
+
+  memberId           String
+  youtuberTeamMember YoutuberTeamMember @relation(fields: [memberId], references: [memberId], onDelete: Cascade)
+
+  skillId String
+  skills  Skills @relation(fields: [skillId], references: [skillId], onDelete: Cascade)
+
+  @@unique([memberId, skillId])
+  @@index([memberId])
+  @@index([skillId])
+}
+
+
+model Freelancer {
+  freelancerId String @id @default(uuid())
+
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  description   String
+  certification String
+
+  startDate DateTime
+  endDate   DateTime
+
+  price Decimal
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  skills SkillFreelancer[]
+}
+
+model SkillFreelancer {
+  skillFreelancerId String @id @default(uuid())
+
+  skillId String
+  skills  Skills @relation(fields: [skillId], references: [skillId], onDelete: Cascade)
+
+  freelancerId String
+  freelancer   Freelancer @relation(fields: [freelancerId], references: [freelancerId], onDelete: Cascade)
+
+  @@unique([freelancerId, skillId])
+  @@index([freelancerId])
+  @@index([skillId])
+}
+
+model Client {
+  clientId String @id @default(uuid())
+
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  description String
+  profilePic  String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  jobs Job[]
+}
+
+
+model Job {
+  jobId String @id @default(uuid())
+
+  clientId String
+  client   Client @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+
+  title       String
+  description String
+  budget      Decimal
+  status      JobStatus
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  applications Application[]
+
+  @@index([clientId])
+}
+
+
+model Application {
+  applicationId String @id @default(uuid())
+
+  jobId String
+  job   Job    @relation(fields: [jobId], references: [jobId], onDelete: Cascade)
+
+  submittedByUserId String
+  submittedByUser   User   @relation(fields: [submittedByUserId], references: [userId], onDelete: Cascade)
+
+  applicationType ApplicationType
+
+  channelId String?
+  channel   Youtuber? @relation(fields: [channelId], references: [channelId], onDelete: Cascade)
+
+  proposal String
+  price    Decimal
+
+  status ApplicationStatus
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  payment Payment?
+
+  @@index([jobId])
+  @@index([submittedByUserId])
+  @@index([channelId])
+}
+
+
+model Payment {
+  paymentId String @id @default(uuid())
+
+  payerUserId String
+  payer       User   @relation(fields: [payerUserId], references: [userId], onDelete: Cascade)
+
+  applicationId String      @unique
+  application   Application @relation(fields: [applicationId], references: [applicationId], onDelete: Cascade)
+
+  price  Decimal
+  status PaymentStatus
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([payerUserId])
+}
+
+enum Account {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum JobStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum ApplicationType {
+  FREELANCER
+  YOUTUBER
+  TEAM_MEMBER
+}
+
+enum ApplicationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
 }
