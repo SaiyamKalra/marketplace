@@ -11,17 +11,19 @@ datasource db {
   provider = "postgresql"
 }
 
-
 model User {
   userId    String  @id @default(uuid())
   firstName String
   lastName  String
   email     String  @unique
-  password  String
-  status    Account
+  password  String?
+  status    Account @default(ACTIVE)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  authAccounts  AuthAccount[]
+  refreshTokens RefreshToken[]
 
   youtuber           Youtuber?
   youtuberTeamMember YoutuberTeamMember?
@@ -32,6 +34,31 @@ model User {
   payments     Payment[]
 }
 
+model AuthAccount {
+  accountId      String       @id @default(uuid())
+  userId         String
+  user           User         @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  provider       AuthProvider
+  providerUserId String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([provider, providerUserId])
+  @@index([userId])
+}
+
+model RefreshToken {
+  tokenId   String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
 
 model Youtuber {
   channelId String @id @default(uuid())
@@ -88,10 +115,9 @@ model Skills {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  member SkillMember[]
+  member     SkillMember[]
   freelancer SkillFreelancer[]
 }
-
 
 model SkillMember {
   skillMemberId String @id @default(uuid())
@@ -106,7 +132,6 @@ model SkillMember {
   @@index([memberId])
   @@index([skillId])
 }
-
 
 model Freelancer {
   freelancerId String @id @default(uuid())
@@ -157,7 +182,6 @@ model Client {
   jobs Job[]
 }
 
-
 model Job {
   jobId String @id @default(uuid())
 
@@ -176,7 +200,6 @@ model Job {
 
   @@index([clientId])
 }
-
 
 model Application {
   applicationId String @id @default(uuid())
@@ -207,7 +230,6 @@ model Application {
   @@index([channelId])
 }
 
-
 model Payment {
   paymentId String @id @default(uuid())
 
@@ -230,6 +252,11 @@ enum Account {
   ACTIVE
   INACTIVE
   SUSPENDED
+}
+
+enum AuthProvider {
+  GOOGLE
+  LOCAL
 }
 
 enum JobStatus {
